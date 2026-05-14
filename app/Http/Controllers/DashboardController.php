@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\WeatherService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -12,12 +16,14 @@ class DashboardController extends Controller
 
     private const LOW_TDS_THRESHOLD = 700.0;
 
+    public function __construct(private WeatherService $weatherService) {}
+
     public function index(): View
     {
         return view('dashboard', $this->dashboardData());
     }
 
-    public function live(): \Illuminate\Http\JsonResponse
+    public function live(): JsonResponse
     {
         return response()->json($this->dashboardData());
     }
@@ -27,14 +33,26 @@ class DashboardController extends Controller
         $latestPrediction = DB::table('predictions')->orderByDesc('id')->first();
         $latestTemperature = DB::table('temperature_readings')->orderByDesc('id')->first();
         $latestTds = DB::table('tds_readings')->orderByDesc('id')->first();
+        $latestWaterLevel = DB::table('water_level_readings')->orderByDesc('id')->first();
+        $latestTdsFormatted = $this->formatTds($latestTds);
+        $latestWaterLevelFormatted = $this->formatWaterLevel($latestWaterLevel);
+        $weatherData = $this->weatherService->getCurrentWeather();
+        $locationOverride = Cache::get('openweather:location') ?? null;
+        $weatherLocation = [
+            'lat' => $locationOverride['lat'] ?? config('openweather.latitude'),
+            'lon' => $locationOverride['lon'] ?? config('openweather.longitude'),
+        ];
 
         return [
             'latestPrediction' => $this->formatPrediction($latestPrediction),
             'latestTemperature' => $this->formatTemperature($latestTemperature),
-            'latestTds' => $this->formatTds($latestTds),
+            'latestTds' => $latestTdsFormatted,
+            'latestWaterLevel' => $latestWaterLevelFormatted,
+            'currentWeather' => $weatherData,
+            'weatherLocation' => $weatherLocation,
             'warningStates' => [
                 'highTemperature' => $latestTemperature !== null && (float) $latestTemperature->temperature >= self::HIGH_TEMPERATURE_THRESHOLD,
-                'lowTds' => $latestTds !== null && (float) $latestTds->tds_value <= self::LOW_TDS_THRESHOLD,
+                'lowTds' => $this->isLowTdsWarning($latestTdsFormatted),
             ],
             'overviewCards' => $this->overviewCards($latestPrediction, $latestTemperature, $latestTds),
             'recentPredictions' => $this->recentPredictions(),
@@ -67,6 +85,18 @@ class DashboardController extends Controller
         ];
     }
 
+    public function updateWeatherLocation(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric',
+        ]);
+
+        Cache::put('openweather:location', ['lat' => (float) $data['lat'], 'lon' => (float) $data['lon']], now()->addYears(5));
+
+        return response()->json(['ok' => true, 'location' => Cache::get('openweather:location')]);
+    }
+
     private function overviewCards(mixed $latestPrediction, mixed $latestTemperature, mixed $latestTds): array
     {
         $predictionConfidence = $latestPrediction !== null ? round(((float) $latestPrediction->confidence) * 100, 1) : null;
@@ -77,25 +107,25 @@ class DashboardController extends Controller
             [
                 'label' => 'AI analysis',
                 'value' => $latestPrediction !== null ? $this->displayPredictionLabel((string) $latestPrediction->prediction) : 'Waiting for image',
-                'meta' => $latestPrediction !== null ? 'Confidence ' . number_format($predictionConfidence, 1) . '%' : 'No plant image uploaded yet',
+                'meta' => $latestPrediction !== null ? 'Confidence '.number_format($predictionConfidence, 1).'%' : 'No plant image uploaded yet',
                 'tone' => $latestPrediction !== null ? 'emerald' : 'slate',
             ],
             [
                 'label' => 'Water temperature',
-                'value' => $latestTemperature !== null ? number_format((float) $latestTemperature->temperature, 1) . '°C' : 'No reading yet',
-                'meta' => $latestTemperature !== null ? Carbon::parse($latestTemperature->created_at)->diffForHumans() : 'Waiting for ESP8266 telemetry',
+                'value' => $latestTemperature !== null ? number_format((float) $latestTemperature->temperature, 1).'°C' : 'No reading yet',
+                'meta' => $latestTemperature !== null ? $this->formatElapsedTime(Carbon::parse($latestTemperature->created_at)) : 'Waiting for ESP8266 telemetry',
                 'tone' => $latestTemperature !== null && (float) $latestTemperature->temperature >= self::HIGH_TEMPERATURE_THRESHOLD ? 'amber' : 'cyan',
             ],
             [
                 'label' => 'TDS / EC',
-                'value' => $latestTdsFormatted !== null ? ($latestTdsFormatted['uncalibrated'] ? ('Estimated Nutrient Level: ' . $latestTdsFormatted['category']) : ($latestTdsFormatted['value'] . ' ppm')) : 'No reading yet',
-                'meta' => $latestTdsFormatted !== null ? Carbon::parse($latestTdsFormatted['createdAt'])->diffForHumans() : 'Awaiting hydroponic sensor data',
-                'tone' => $latestTdsFormatted !== null && (!$latestTdsFormatted['uncalibrated'] ? ((int) $latestTdsFormatted['value'] <= self::LOW_TDS_THRESHOLD ? 'rose' : 'emerald') : 'emerald'),
+                'value' => $latestTdsFormatted !== null ? ($latestTdsFormatted['uncalibrated'] ? ('Estimated Nutrient Level: '.$latestTdsFormatted['category']) : ($latestTdsFormatted['value'].' ppm')) : 'No reading yet',
+                'meta' => $latestTdsFormatted !== null ? $this->formatElapsedTime(Carbon::parse($latestTdsFormatted['createdAt'])) : 'Awaiting hydroponic sensor data',
+                'tone' => $latestTdsFormatted !== null && (! $latestTdsFormatted['uncalibrated'] ? ((int) $latestTdsFormatted['value'] <= self::LOW_TDS_THRESHOLD ? 'rose' : 'emerald') : 'emerald'),
             ],
             [
                 'label' => 'Telemetry sync',
-                'value' => $this->recordsCount('predictions') + $this->recordsCount('temperature_readings') + $this->recordsCount('tds_readings') . ' records',
-                'meta' => 'Latest sync ' . now()->diffForHumans(),
+                'value' => $this->recordsCount('predictions') + $this->recordsCount('temperature_readings') + $this->recordsCount('tds_readings').' records',
+                'meta' => 'Latest sync '.$this->formatElapsedTime(now()),
                 'tone' => 'violet',
             ],
         ];
@@ -112,9 +142,9 @@ class DashboardController extends Controller
 
                 return [
                     'id' => $prediction->id,
-                    'image' => asset('storage/' . $prediction->image),
+                    'image' => asset('storage/'.$prediction->image),
                     'prediction' => $this->displayPredictionLabel((string) $prediction->prediction),
-                    'confidence' => number_format($confidence, 1) . '%',
+                    'confidence' => number_format($confidence, 1).'%',
                     'confidenceValue' => $confidence,
                     'createdAt' => Carbon::parse($prediction->created_at)->format('M d, H:i'),
                 ];
@@ -132,7 +162,7 @@ class DashboardController extends Controller
             ->map(function (object $reading): array {
                 return [
                     'sensor' => $reading->sensor,
-                    'reading' => number_format((float) $reading->reading, 1) . ' °C',
+                    'reading' => number_format((float) $reading->reading, 1).' °C',
                     'tone' => 'cyan',
                     'createdAt' => Carbon::parse($reading->created_at),
                     'timestamp' => Carbon::parse($reading->created_at)->format('M d, H:i'),
@@ -147,7 +177,7 @@ class DashboardController extends Controller
             ->map(function (object $reading): array {
                 $formatted = $this->formatTds($reading);
 
-                $display = $formatted !== null ? ($formatted['uncalibrated'] ? $formatted['category'] : ($formatted['value'] . ' ppm')) : number_format((float) $reading->reading, 0) . ' ppm';
+                $display = $formatted !== null ? ($formatted['uncalibrated'] ? $formatted['category'] : ($formatted['value'].' ppm')) : number_format((float) $reading->reading, 0).' ppm';
 
                 return [
                     'sensor' => $reading->sensor,
@@ -176,12 +206,12 @@ class DashboardController extends Controller
 
         return [
             'id' => $prediction->id,
-            'image' => asset('storage/' . $prediction->image),
+            'image' => asset('storage/'.$prediction->image),
             'prediction' => $this->displayPredictionLabel((string) $prediction->prediction),
-            'confidence' => number_format($confidence, 1) . '%',
+            'confidence' => number_format($confidence, 1).'%',
             'confidenceValue' => $confidence,
             'createdAt' => Carbon::parse($prediction->created_at)->format('M d, Y H:i'),
-            'relativeTime' => Carbon::parse($prediction->created_at)->diffForHumans(),
+            'relativeTime' => $this->formatElapsedTime(Carbon::parse($prediction->created_at)),
         ];
     }
 
@@ -194,7 +224,7 @@ class DashboardController extends Controller
         return [
             'value' => number_format((float) $reading->temperature, 1),
             'createdAt' => Carbon::parse($reading->created_at)->format('M d, Y H:i'),
-            'relativeTime' => Carbon::parse($reading->created_at)->diffForHumans(),
+            'relativeTime' => $this->formatElapsedTime(Carbon::parse($reading->created_at)),
         ];
     }
 
@@ -235,7 +265,7 @@ class DashboardController extends Controller
                 'category' => $category,
                 'uncalibrated' => true,
                 'createdAt' => $createdAt ? Carbon::parse($createdAt)->format('M d, Y H:i') : now()->format('M d, Y H:i'),
-                'relativeTime' => $createdAt ? Carbon::parse($createdAt)->diffForHumans() : now()->diffForHumans(),
+                'relativeTime' => $createdAt ? $this->formatElapsedTime(Carbon::parse($createdAt)) : $this->formatElapsedTime(now()),
             ];
         }
 
@@ -244,8 +274,21 @@ class DashboardController extends Controller
             'category' => null,
             'uncalibrated' => false,
             'createdAt' => $createdAt ? Carbon::parse($createdAt)->format('M d, Y H:i') : now()->format('M d, Y H:i'),
-            'relativeTime' => $createdAt ? Carbon::parse($createdAt)->diffForHumans() : now()->diffForHumans(),
+            'relativeTime' => $createdAt ? $this->formatElapsedTime(Carbon::parse($createdAt)) : $this->formatElapsedTime(now()),
         ];
+    }
+
+    private function formatElapsedTime(Carbon $timestamp): string
+    {
+        $diffInSeconds = $timestamp->diffInSeconds(now());
+
+        $days = intdiv($diffInSeconds, 86400);
+        $remainingAfterDays = $diffInSeconds % 86400;
+        $hours = intdiv($remainingAfterDays, 3600);
+        $remainingAfterHours = $remainingAfterDays % 3600;
+        $minutes = intdiv($remainingAfterHours, 60);
+
+        return $days.'d '.$hours.'h '.$minutes.'m';
     }
 
     private function mapUncalibratedTds(float $value): string
@@ -261,6 +304,19 @@ class DashboardController extends Controller
         }
 
         return 'High';
+    }
+
+    private function isLowTdsWarning(?array $latestTdsFormatted): bool
+    {
+        if ($latestTdsFormatted === null) {
+            return false;
+        }
+
+        if ($latestTdsFormatted['uncalibrated']) {
+            return $latestTdsFormatted['category'] === 'Low';
+        }
+
+        return (float) $latestTdsFormatted['value'] <= self::LOW_TDS_THRESHOLD;
     }
 
     private function recordsCount(string $table): int
@@ -284,6 +340,22 @@ class DashboardController extends Controller
             return $normalized;
         }
 
-        return 'Deficient ' . $normalized;
+        return 'Deficient '.$normalized;
+    }
+
+    private function formatWaterLevel(mixed $reading): ?array
+    {
+        if ($reading === null) {
+            return null;
+        }
+
+        $percentage = (float) $reading->percentage;
+
+        return [
+            'percentage' => round($percentage, 1),
+            'distanceCm' => number_format((float) $reading->distance_cm, 2),
+            'createdAt' => Carbon::parse($reading->created_at)->format('M d, Y H:i'),
+            'relativeTime' => $this->formatElapsedTime(Carbon::parse($reading->created_at)),
+        ];
     }
 }

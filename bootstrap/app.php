@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
             '/upload-leaf',
             '/temperature',
             '/tds',
+            '/water-level',
+            '/settings/weather-location',
+            '/ollama/run',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

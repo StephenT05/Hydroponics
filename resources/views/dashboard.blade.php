@@ -3,113 +3,80 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ config('app.name', 'Hydroponics AI') }} Dashboard</title>
 
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <style>
+            .dark-surface {
+                background-color: rgba(2, 6, 23, 0.92);
+            }
+
+            #overview,
+            section.space-y-4 > article,
+            #ai-monitor > article,
+            #history > article,
+            #overview .w-full.space-y-4 > div,
+            #overview .space-y-3 > div,
+            #ai-monitor .space-y-4.rounded,
+            #ai-monitor .grid.grid-cols-1 > div,
+            #ai-monitor .overflow-hidden.rounded,
+            #ai-monitor .mt-5.space-y-4 > div {
+                background-color: rgba(255, 255, 255, 0.08) !important;
+                border-color: rgba(255, 255, 255, 0.2) !important;
+            }
+        </style>
     </head>
     <body
         data-live-url="{{ route('dashboard.live') }}"
         data-live-interval="{{ $refreshInterval }}"
-        class="min-h-screen bg-slate-950 text-slate-100 antialiased"
+        class="dark-surface min-h-screen text-slate-100 antialiased"
+        style="background-image: url('https://www.transparenttextures.com/patterns/cartographer.png'); background-repeat: repeat;"
     >
-        <div class="pointer-events-none fixed inset-0 overflow-hidden">
-            <div class="absolute -left-24 top-0 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl"></div>
-            <div class="absolute right-0 top-20 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl"></div>
-            <div class="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-lime-400/10 blur-3xl"></div>
-        </div>
-
-        <div class="relative flex min-h-screen">
-            <aside class="hidden w-72 shrink-0 border-r border-white/10 bg-slate-950/80 px-6 py-8 backdrop-blur xl:block">
-                <div class="mb-8 flex items-center gap-3">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 via-cyan-400 to-lime-300 text-slate-950 shadow-lg shadow-emerald-400/20">
-                        <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6" stroke="currentColor" stroke-width="1.8">
-                            <path d="M12 3c4.97 0 9 4.03 9 9s-4.03 9-9 9-9-4.03-9-9 4.03-9 9-9Z" />
-                            <path d="M12 7v10" />
-                            <path d="M8.5 10.5c1.5-1 3-1.5 3.5-1.5s2 .5 3.5 1.5" />
-                            <path d="M8.5 13.5c1.5 1 3 1.5 3.5 1.5s2-.5 3.5-1.5" />
-                        </svg>
-                    </div>
-                </div>
-
-                <nav class="space-y-2 text-sm font-medium">
-                    <a href="#overview" class="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-emerald-200 transition hover:border-emerald-300/40 hover:bg-emerald-400/15">
-                        <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-                        Overview
-                    </a>
-                    <a href="#ai-monitor" class="flex items-center gap-3 rounded-2xl border border-white/5 px-4 py-3 text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/5">
-                        <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
-                        AI Prediction
-                    </a>
-                    <a href="#sensors" class="flex items-center gap-3 rounded-2xl border border-white/5 px-4 py-3 text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/5">
-                        <span class="h-2 w-2 rounded-full bg-lime-300"></span>
-                        Sensor Logs
-                    </a>
-                    <a href="#future" class="flex items-center gap-3 rounded-2xl border border-white/5 px-4 py-3 text-slate-300 transition hover:border-violet-300/30 hover:bg-white/5">
-                        <span class="h-2 w-2 rounded-full bg-violet-300"></span>
-                        Roadmap
-                    </a>
-                </nav>
-
-                        <div class="mt-10 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/30">
-                    <p class="text-xs uppercase tracking-[0.3em] text-cyan-200/70">System pulse</p>
-                    <div class="mt-4 space-y-3 text-sm text-slate-300">
-                        <div class="flex items-center justify-between gap-3">
-                            <span>Auto refresh</span>
-                                    <span class="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-emerald-200">live</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3">
-                            <span>Last sync</span>
-                                    <span id="last-synced-at" class="text-slate-100">{{ $lastSyncedAt }}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3">
-                            <span>Camera stream</span>
-                            <span class="text-emerald-200">Connected</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <main class="flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-                <div class="mx-auto max-w-7xl space-y-6">
-                    <section id="overview" class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-black/30 backdrop-blur">
+        <div class="relative flex min-h-screen justify-center">
+            <main class="w-full px-6 py-6">
+                <div class="mx-auto w-full md:w-[60%] space-y-6">
+                    <section id="overview" class="overflow-hidden rounded border border-white/10 bg-slate-900/85">
                         <div class="dashboard-grid px-5 py-5 sm:px-6 lg:px-8">
-                            <div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+                            <div class="space-y-6">
                                 <div class="space-y-4">
-                                    <div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-cyan-200">
-                                        <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
-                                        Sensor telemetry live
-                                    </div>
+                                    
                                     <div>
-                                        <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Water quality first. AI second.</h2>
+                                        <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Hydrolink AI</h2>
                                         <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                                            Track temperature, raw conductivity trend, and warning states up front so the dashboard behaves like a monitoring panel, not a landing page.
+                                            Track temperature, raw conductivity trend, and warning states up front. Happy gardening
                                         </p>
                                     </div>
 
-                                    <div class="grid gap-3 sm:grid-cols-3">
-                                        <div class="rounded-2xl border border-cyan-400/15 bg-cyan-400/10 p-4">
-                                            <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Temperature</p>
-                                            <p class="mt-3 text-2xl font-semibold text-white">{{ $latestTemperature['value'] ?? '--.-' }}<span class="ml-1 text-lg text-cyan-200">°C</span></p>
-                                            <p class="mt-2 text-sm text-slate-400">{{ $latestTemperature['relativeTime'] ?? 'No reading yet' }}</p>
-                                        </div>
-                                        <div class="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 p-4">
-                                            <p class="text-xs uppercase tracking-[0.28em] text-emerald-200/70">Conductivity</p>
-                                            <p class="mt-3 text-2xl font-semibold text-white">{{ $latestTds['uncalibrated'] ?? false ? ($latestTds['category'] ?? 'No reading yet') : ($latestTds['value'] ?? '--') }}</p>
-                                            <p class="mt-2 text-sm text-slate-400">{{ $latestTds['uncalibrated'] ?? false ? 'Estimated nutrient level' : 'ppm' }}</p>
-                                        </div>
-                                        <div class="rounded-2xl border border-violet-400/15 bg-violet-400/10 p-4">
-                                            <p class="text-xs uppercase tracking-[0.28em] text-violet-200/70">Warnings</p>
-                                            <p class="mt-3 text-2xl font-semibold text-white">{{ ($warningStates['highTemperature'] ? 1 : 0) + ($warningStates['lowTds'] ? 1 : 0) }}</p>
-                                            <p class="mt-2 text-sm text-slate-400">Active alert(s)</p>
+                                    <div class="space-y-4">
+                                        <div class="w-full space-y-4">
+                                            <div class="rounded border border-white/10 bg-slate-900/80 p-6">
+                                                <p class="text-xs uppercase tracking-[0.28em] text-rose-200/70">Temperature</p>
+                                                <p class="mt-3 text-3xl font-semibold text-white">{{ $latestTemperature['value'] ?? '--.-' }}<span class="ml-1 text-xl text-rose-200">°C</span></p>
+                                                <p class="mt-2 text-sm text-slate-400">{{ $latestTemperature['relativeTime'] ?? 'No reading yet' }}</p>
+                                            </div>
+
+                                            <div class="rounded border border-white/10 bg-slate-900/80 p-6">
+                                                <p class="text-xs uppercase tracking-[0.28em] text-amber-200/70">Conductivity</p>
+                                                <p class="mt-3 text-3xl font-semibold text-white">{{ $latestTds['uncalibrated'] ?? false ? ($latestTds['category'] ?? 'No reading yet') : ($latestTds['value'] ?? '--') }}</p>
+                                                <p class="mt-2 text-sm text-slate-400">{{ $latestTds['uncalibrated'] ?? false ? 'Estimated nutrient level' : 'ppm' }}</p>
+                                            </div>
+
+                                            <div class="rounded border border-white/10 bg-slate-900/80 p-6">
+                                                <p class="text-xs uppercase tracking-[0.28em] text-fuchsia-200/70">Warnings</p>
+                                                <p class="mt-3 text-3xl font-semibold text-white">{{ ($warningStates['highTemperature'] ? 1 : 0) + ($warningStates['lowTds'] ? 1 : 0) }}</p>
+                                                <p class="mt-2 text-sm text-slate-400">Active alert(s)</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="space-y-3">
                                     @foreach ($overviewCards as $card)
-                                        <div class="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-lg shadow-black/20">
+                                        <div class="rounded border border-white/10 bg-slate-900/80 p-4">
                                             <p class="text-xs uppercase tracking-[0.28em] text-slate-400">{{ $card['label'] }}</p>
                                             <p class="overview-value mt-3 text-lg font-semibold text-white">{{ $card['value'] }}</p>
                                             <p class="overview-meta mt-2 text-sm text-slate-400">{{ $card['meta'] }}</p>
@@ -120,8 +87,8 @@
                         </div>
                     </section>
 
-                    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <article class="rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/20 via-slate-950 to-slate-900 p-5 shadow-2xl shadow-cyan-950/30 sm:col-span-2 xl:col-span-1">
+                    <section class="space-y-4">
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
                             <div class="flex items-center justify-between gap-4">
                                 <div>
                                     <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Water temperature</p>
@@ -155,14 +122,14 @@
                             </div>
                         </article>
 
-                        <article class="rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/20 via-slate-950 to-slate-900 p-5 shadow-2xl shadow-emerald-950/30 sm:col-span-2 xl:col-span-1">
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
                             <p class="text-xs uppercase tracking-[0.28em] text-emerald-200/70">Conductivity trend</p>
                             <div class="mt-4 flex items-end justify-between gap-4">
                                 <div>
                                     @if (!empty($latestTds) && ($latestTds['uncalibrated'] ?? false))
                                         <p class="text-xs text-slate-400">Estimated Nutrient Level</p>
-                                        <p class="text-4xl font-semibold text-white"><span id="latest-tds-value">{{ $latestTds['category'] }}</span></p>
-                                        <p id="latest-tds-raw" class="mt-1 text-xs text-slate-400">raw {{ $latestTds['value'] }}</p>
+                                        <p class="text-4xl font-semibold text-white"><span id="latest-tds-value">{{ $latestTds['category'] ?? 'No reading yet' }}</span></p>
+                                        <p id="latest-tds-raw" class="mt-1 text-xs text-slate-400">raw data {{ $latestTds['value'] }}</p>
                                         <p id="latest-tds-relative-time" class="mt-2 text-sm text-slate-400">{{ $latestTds['relativeTime'] ?? 'No reading yet' }}</p>
                                     @else
                                         <p class="text-4xl font-semibold text-white"><span id="latest-tds-value">{{ $latestTds['value'] ?? '--' }}</span><span class="ml-1 text-xl text-emerald-200">ppm</span></p>
@@ -178,13 +145,116 @@
                                     </svg>
                                 </div>
                             </div>
-                            <div id="tds-warning" class="mt-5 flex items-center gap-2 text-sm {{ $warningStates['lowTds'] ? 'text-rose-200' : 'text-emerald-200' }}">
-                                <span id="tds-warning-dot" class="h-2 w-2 rounded-full {{ $warningStates['lowTds'] ? 'bg-rose-300' : 'bg-emerald-300' }}"></span>
-                                <span id="tds-warning-text">{{ $warningStates['lowTds'] ? 'Low nutrient warning' : 'Nutrient level acceptable' }}</span>
+                            @php
+                                $tdsUncalibrated = $latestTds['uncalibrated'] ?? false;
+                                $tdsCategory = $latestTds['category'] ?? null;
+                                $tdsLowState = $tdsUncalibrated ? ($tdsCategory === 'Low') : ($warningStates['lowTds'] ?? false);
+                            @endphp
+                            <div id="tds-warning" class="mt-5 flex items-center gap-2 text-sm {{ $tdsLowState ? 'text-rose-200' : 'text-emerald-200' }}">
+                                <span id="tds-warning-dot" class="h-2 w-2 rounded-full {{ $tdsLowState ? 'bg-rose-300' : 'bg-emerald-300' }}"></span>
+                                <span id="tds-warning-text">{{ $tdsUncalibrated ? ($tdsCategory ?? 'Nutrient level unknown') : ($warningStates['lowTds'] ? 'Low nutrient warning' : 'Nutrient level acceptable') }}</span>
                             </div>
                         </article>
 
-                        <article class="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-5 shadow-2xl shadow-black/30 sm:col-span-2 xl:col-span-1">
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.28em] text-blue-200/70">Water level</p>
+                                    <p class="mt-2 text-sm text-slate-400">Tank capacity</p>
+                                    <p class="mt-3 text-4xl font-semibold text-white"><span id="latest-water-level-percentage">{{ $latestWaterLevel['percentage'] ?? '--' }}</span><span class="ml-1 text-xl text-blue-200">%</span></p>
+                                    <p id="latest-water-distance" class="mt-3 text-sm text-slate-400">{{ $latestWaterLevel['distanceCm'] ?? '--' }} cm</p>
+                                    <div class="mt-4 text-xs text-slate-500">
+                                        <p id="latest-water-created-at">{{ $latestWaterLevel['createdAt'] ?? 'No data' }}</p>
+                                        <p id="latest-water-relative-time" class="mt-1 text-blue-200">{{ $latestWaterLevel['relativeTime'] ?? 'No reading yet' }}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Vertical tank on the right -->
+                                <div class="relative h-40 w-20 overflow-hidden rounded-lg border-2 border-blue-400/40 bg-slate-950/60">
+                                    <div id="water-fill" class="absolute bottom-0 w-full bg-gradient-to-t from-blue-500/50 via-blue-400/40 to-transparent transition-all duration-500 ease-out" style="height: {{ $latestWaterLevel['percentage'] ?? 0 }}%;"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span id="water-level-text" class="text-xs font-bold text-blue-200 drop-shadow-lg">{{ $latestWaterLevel['percentage'] ?? '—' }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.28em] text-orange-200/70">Current weather</p>
+                                    <p class="mt-3 text-4xl font-semibold text-white"><span id="weather-temperature">{{ $currentWeather['temperature'] ?? '--' }}</span><span class="ml-1 text-xl text-orange-200">°C</span></p>
+                                    <p id="weather-description" class="mt-2 text-sm text-slate-400 capitalize">{{ $currentWeather['description'] ?? 'No data' }}</p>
+                                    <div class="mt-4 space-y-2 text-sm text-slate-300">
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-400">Humidity</span>
+                                            <span id="weather-humidity" class="font-semibold">{{ $currentWeather['humidity'] ?? '--' }}%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-400">Wind</span>
+                                            <span id="weather-wind" class="font-semibold">{{ $currentWeather['wind_speed'] ?? '--' }} m/s</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-400">Clouds</span>
+                                            <span id="weather-clouds" class="font-semibold">{{ $currentWeather['clouds'] ?? '--' }}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rounded-2xl bg-orange-400/15 p-3 text-orange-200">
+                                    @php
+                                        $iconCode = $currentWeather['icon'] ?? null;
+                                        $weatherMain = strtolower($currentWeather['main'] ?? 'clear');
+                                    @endphp
+
+                                    @if ($iconCode)
+                                        <img src="https://openweathermap.org/img/wn/{{ $iconCode }}@2x.png" alt="{{ $currentWeather['description'] ?? 'weather' }}" class="h-8 w-8" />
+                                    @else
+                                        @php
+                                            if (str_contains($weatherMain, 'clear') || str_contains($weatherMain, 'sun')) {
+                                                $cdnIcon = 'sun';
+                                            } elseif (str_contains($weatherMain, 'cloud')) {
+                                                $cdnIcon = 'cloud';
+                                            } elseif (str_contains($weatherMain, 'rain') || str_contains($weatherMain, 'drizzle')) {
+                                                $cdnIcon = 'cloud-rain';
+                                            } elseif (str_contains($weatherMain, 'thunder') || str_contains($weatherMain, 'storm')) {
+                                                $cdnIcon = 'zap';
+                                            } elseif (str_contains($weatherMain, 'snow')) {
+                                                $cdnIcon = 'cloud-snow';
+                                            } else {
+                                                $cdnIcon = 'sun';
+                                            }
+                                        @endphp
+
+                                        <img src="https://unpkg.com/feather-icons/dist/icons/{{ $cdnIcon }}.svg" alt="{{ $currentWeather['description'] ?? 'weather' }}" class="h-8 w-8" />
+                                    @endif
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.28em] text-indigo-200/70">Ollama control</p>
+                                    <h3 class="mt-2 text-xl font-semibold text-white">Send current sensor snapshot</h3>
+                                    <p class="mt-2 text-sm text-slate-400">One click sends the latest dashboard readings to the local model.</p>
+                                </div>
+                                <div class="rounded-2xl bg-indigo-400/15 p-3 text-indigo-200">
+                                    <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6" stroke="currentColor" stroke-width="1.8">
+                                        <path d="M12 2v20" />
+                                        <path d="M5 9l7-7 7 7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 flex flex-wrap items-center gap-3">
+                                <button id="ollama-run-btn" type="button" class="rounded bg-indigo-600/90 px-4 py-2 text-sm font-semibold text-white">Send to Ollama</button>
+                                <span class="text-sm text-slate-400">Uses the latest water temperature, TDS, water level, and weather data.</span>
+                            </div>
+
+                            <div id="ollama-output" class="mt-4 rounded border border-white/10 bg-slate-900/80 p-4 text-sm whitespace-pre-wrap text-slate-300">Waiting for a sensor snapshot...</div>
+                        </article>
+
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
                             <div class="flex items-center justify-between gap-4">
                                 <div>
                                     <p class="text-xs uppercase tracking-[0.28em] text-emerald-200/70">Latest AI prediction</p>
@@ -215,7 +285,7 @@
                             </div>
                         </article>
 
-                        <article class="rounded-3xl border border-violet-400/20 bg-gradient-to-br from-violet-500/20 via-slate-950 to-slate-900 p-5 shadow-2xl shadow-violet-950/30">
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
                             <p class="text-xs uppercase tracking-[0.28em] text-violet-200/70">Telemetry volume</p>
                             <div class="mt-4 flex items-end justify-between gap-4">
                                 <div>
@@ -237,8 +307,8 @@
                         </article>
                     </section>
 
-                    <section id="ai-monitor" class="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-                        <article class="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl shadow-black/30 backdrop-blur">
+                    <section id="ai-monitor" class="space-y-6">
+                        <article class="rounded border border-white/10 bg-slate-900/85 p-5">
                             <div class="flex items-center justify-between gap-4">
                                 <div>
                                     <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Latest uploaded plant image</p>
@@ -248,12 +318,12 @@
                             </div>
 
                             @if ($latestPrediction !== null)
-                                <div class="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-                                    <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+                                <div class="mt-5 space-y-5">
+                                    <div class="overflow-hidden rounded border border-white/10 bg-slate-900/80">
                                         <img id="latest-prediction-image" src="{{ $latestPrediction['image'] }}" alt="Latest plant upload" class="h-full w-full object-cover">
                                     </div>
 
-                                    <div class="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+                                    <div class="space-y-4 rounded border border-white/10 bg-slate-900/80 p-5">
                                         <div>
                                             <p class="text-xs uppercase tracking-[0.28em] text-emerald-200/70">Diagnosis</p>
                                             <p id="latest-prediction-diagnosis" class="mt-2 text-2xl font-semibold text-white">{{ $latestPrediction['prediction'] }}</p>
@@ -269,12 +339,12 @@
                                             </div>
                                         </div>
 
-                                        <div class="grid grid-cols-2 gap-3 text-sm text-slate-300">
-                                            <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+                                        <div class="grid grid-cols-1 gap-3 text-sm text-slate-300">
+                                            <div class="rounded border border-white/10 bg-slate-900/80 p-3">
                                                 <p class="text-slate-500">Uploaded</p>
                                                 <p id="latest-prediction-uploaded-at" class="mt-1 text-white">{{ $latestPrediction['createdAt'] }}</p>
                                             </div>
-                                            <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+                                            <div class="rounded border border-white/10 bg-slate-900/80 p-3">
                                                 <p class="text-slate-500">Freshness</p>
                                                 <p id="latest-prediction-freshness" class="mt-1 text-white">{{ $latestPrediction['relativeTime'] }}</p>
                                             </div>
@@ -289,45 +359,11 @@
                             @endif
                         </article>
 
-                        <article class="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl shadow-black/30 backdrop-blur">
-                            <div class="flex items-center justify-between gap-4">
-                                <div>
-                                    <p class="text-xs uppercase tracking-[0.28em] text-violet-200/70">Chart placeholders</p>
-                                    <h3 class="mt-2 text-xl font-semibold text-white">Trend modules</h3>
-                                </div>
-                                <span class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs text-violet-200">Demo ready</span>
-                            </div>
-
-                            <div class="mt-5 space-y-4">
-                                <div class="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/60 p-5">
-                                    <div class="flex items-center justify-between text-sm text-slate-400">
-                                        <span>AI prediction trend</span>
-                                        <span>Last 24h</span>
-                                    </div>
-                                    <div class="mt-4 flex h-36 items-end gap-2">
-                                        @foreach ([32, 52, 28, 74, 56, 84, 48] as $bar)
-                                            <div class="flex-1 rounded-t-2xl bg-gradient-to-t from-cyan-400/40 to-emerald-300/80" style="height: {{ $bar }}%;"></div>
-                                        @endforeach
-                                    </div>
-                                </div>
-
-                                <div class="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/60 p-5">
-                                    <div class="flex items-center justify-between text-sm text-slate-400">
-                                        <span>Water quality trend</span>
-                                        <span>Correlation view</span>
-                                    </div>
-                                    <div class="mt-4 grid h-36 grid-cols-12 items-end gap-2">
-                                        @foreach ([18, 24, 34, 28, 48, 36, 42, 54, 68, 58, 76, 64] as $bar)
-                                            <div class="rounded-t-2xl bg-gradient-to-t from-lime-300/40 to-emerald-300/80" style="height: {{ $bar }}%;"></div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        </article>
+                        <!-- Trend modules card removed -->
                     </section>
 
-                    <section id="history" class="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-                        <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-black/30 backdrop-blur">
+                    <section id="history" class="space-y-6">
+                        <article class="overflow-hidden rounded border border-white/10 bg-slate-900/85">
                             <div class="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
                                 <div>
                                     <p class="text-xs uppercase tracking-[0.28em] text-emerald-200/70">Recent prediction history</p>
@@ -369,7 +405,7 @@
                             </div>
                         </article>
 
-                        <article id="sensors" class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-black/30 backdrop-blur">
+                        <article id="sensors" class="overflow-hidden rounded border border-white/10 bg-slate-900/85">
                             <div class="border-b border-white/10 px-5 py-4 sm:px-6">
                                 <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Recent sensor logs</p>
                                 <h3 class="mt-2 text-xl font-semibold text-white">Temperature and TDS stream</h3>
@@ -383,13 +419,13 @@
                                             <p class="mt-1 text-sm text-slate-400">{{ $log['timestamp'] }}</p>
                                         </div>
                                         @if(isset($log['raw']))
-                                            <span class="rounded-full border border-white/10 px-3 py-1 text-sm {{ $log['tone'] === 'cyan' ? 'bg-cyan-400/10 text-cyan-200' : 'bg-emerald-400/10 text-emerald-200' }}">
-                                                <div class="text-sm">Estimated Nutrient Level</div>
+                                            <div class="text-right text-sm">
+                                                <div class="text-sm text-emerald-200">Estimated Nutrient Level</div>
                                                 <div class="mt-1 font-semibold text-white">{{ $log['reading'] }}</div>
-                                                <div class="mt-1 text-xs text-slate-400">raw {{ $log['raw'] }}</div>
-                                            </span>
+                                                <div class="mt-1 text-xs text-slate-400">raw data {{ $log['raw'] }}</div>
+                                            </div>
                                         @else
-                                            <span class="rounded-full border border-white/10 px-3 py-1 text-sm {{ $log['tone'] === 'cyan' ? 'bg-cyan-400/10 text-cyan-200' : 'bg-emerald-400/10 text-emerald-200' }}">{{ $log['reading'] }}</span>
+                                            <div class="text-sm font-semibold {{ $log['tone'] === 'cyan' ? 'text-cyan-200' : 'text-emerald-200' }}">{{ $log['reading'] }}</div>
                                         @endif
                                     </div>
                                 @empty
