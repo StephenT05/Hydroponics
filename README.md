@@ -159,18 +159,92 @@ In `ai/venv/`:
 - Installed via `pip` (see `ai/venv/Scripts/`)
 
 ### External Services (Run Separately)
-- **Ollama** — Self-hosted LLM inference server
   - Download: https://ollama.ai
   - Run: `ollama serve` (listens on `127.0.0.1:11434`)
   - Model: `gemma3:1b` (or specify in dashboard POST)
   - Not installed as Laravel dependency; runs as background process
 
-- **OpenWeather API** — Third-party REST API
   - Endpoint: `https://api.openweathermap.org/data/2.5/weather`
   - Requires API key in `.env` (`OPENWEATHER_API_KEY`)
   - Cached 10 minutes (configurable)
 
----
+
+## Hardware
+
+Recommended hardware used and tested with this project:
+- **ESP32-CAM** — image capture for plant leaf photos (uploads to `/upload-leaf`).
+- **ESP8266 / ESP32 (generic)** — microcontroller for sensor readings and HTTP POSTs.
+- **TDS / EC probe** (analog conductivity sensor) — measures nutrient solution conductivity.
+- **Waterproof temperature sensor (e.g., DS18B20)** or compatible thermistor — water temperature.
+- **HC-SR04 ultrasonic sensor** — measures water tank distance (used to compute percentage fill).
+- **Power supply, relays/MOSFETs, wiring** — 5V/3.3V power and switching for pumps/actuators.
+- **Optional**: pH probe, peristaltic pump, float switches for redundancy.
+
+## Libraries Required (installation)
+
+These are the primary libraries and tools you should have installed before running the project.
+
+- PHP / Composer (backend): install Composer, then run `composer install` to fetch packages listed in `composer.json` (key packages: `laravel/framework`, `laravel/boost`, `laravel/pint`, `pestphp/pest`).
+- Node.js / npm (frontend): install Node.js and npm, then run `npm install` (key packages: `tailwindcss`, `vite`, `laravel-vite-plugin`).
+- Python (ML inference/training): create a virtualenv and install packages:
+
+```bash
+python -m venv ai/venv
+ai\venv\Scripts\activate     # Windows
+pip install --upgrade pip
+pip install tensorflow numpy scikit-learn pillow
+```
+
+- Ollama (local LLM): install and run the Ollama binary (https://ollama.ai). This is a separate service — not a composer/npm dependency.
+
+- Microcontroller firmware libraries (install via Arduino Library Manager or PlatformIO):
+  - `ArduinoJson` — JSON serialization for HTTP payloads
+  - `OneWire` + `DallasTemperature` — if using DS18B20
+  - `TdsSensor` or equivalent sketch code to read analog TDS probes (many projects use simple ADC scaling)
+  - (ESP boards include `WiFi.h` / `ESP8266WiFi.h` by default)
+
+## Quick How to Run (short)
+
+1. Ensure system requirements installed: PHP 8.4 + Composer, Node + npm, Python 3.9+, Ollama running locally.
+2. Clone repo and install dependencies:
+
+```bash
+git clone https://github.com/StephenT05/Hydroponics.git
+cd Hydroponics
+composer install
+npm install
+```
+
+3. Configure environment and database:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+```
+
+4. Prepare Python environment for inference (optional, required for `/upload-leaf` AI):
+
+```bash
+python -m venv ai/venv
+ai\venv\Scripts\activate
+pip install tensorflow numpy pillow scikit-learn
+```
+
+5. Start services:
+
+```bash
+# Start Laravel (bind to LAN for devices)
+php artisan serve --host=0.0.0.0 --port=8000
+
+# In a separate shell: start Ollama (must be installed separately)
+ollama serve
+
+# Optional: start Vite dev server
+npm run dev
+```
+
+IoT devices should POST sensor payloads to `http://<PC-LAN-IP>:8000/*` (see API routes above).
 
 ## Getting Started
 
