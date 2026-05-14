@@ -160,6 +160,7 @@ In `ai/venv/`:
 
 ### External Services (Run Separately)
   - Download: https://ollama.ai
+  - Install (PowerShell): `irm https://ollama.com/install.ps1 | iex`  
   - Run: `ollama serve` (listens on `127.0.0.1:11434`)
   - Model: `gemma3:1b` (or specify in dashboard POST)
   - Not installed as Laravel dependency; runs as background process
@@ -174,10 +175,9 @@ In `ai/venv/`:
 Recommended hardware used and tested with this project:
 - **ESP32-CAM** — image capture for plant leaf photos (uploads to `/upload-leaf`).
 - **ESP8266 / ESP32 (generic)** — microcontroller for sensor readings and HTTP POSTs.
-- **TDS / EC probe** (analog conductivity sensor) — measures nutrient solution conductivity.
-- **Waterproof temperature sensor (e.g., DS18B20)** or compatible thermistor — water temperature.
+- **EC probe** (analog conductivity sensor) — measures solution conductivity.
+- **Waterproof temperature sensor (DS18B20)** or compatible thermistor — water temperature.
 - **HC-SR04 ultrasonic sensor** — measures water tank distance (used to compute percentage fill).
-- **Power supply, relays/MOSFETs, wiring** — 5V/3.3V power and switching for pumps/actuators.
 - **Optional**: pH probe, peristaltic pump, float switches for redundancy.
 
 ## Libraries Required (installation)
